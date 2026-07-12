@@ -45,7 +45,7 @@
    ======================================================== */
 
 let stars = [];
-let phase = "sky"; // sky -> converge -> flash -> jar -> opening -> releasing -> end
+let phase = "sky"; // sky -> flash -> jar -> opening -> hourglass -> end
 let phaseTimer = 0;
 
 // 出会いの光の粒子（ツインレイ）
@@ -285,13 +285,26 @@ function touchEnded() {
   return false;
 }
 
+// デスクトップ用フォールバック: クリックで jar → opening へ進む
+function mousePressed() {
+  if (phase === "jar") {
+    console.log("[phase] jar → opening (mouse fallback)");
+    phase = "opening";
+    gestureActive = false;
+    gestureStartYs = {};
+  }
+  return false;
+}
+
 /* ---------------- シーン3: 解放 ---------------- */
 
 function updateOpening() {
   lidOpenAmount = min(lidOpenAmount + 0.03, 1);
   if (lidOpenAmount >= 1) {
     phase = "hourglass";
+    console.log("[phase] opening → hourglass");
     initHourglass();
+    console.log("[initHourglass] topGrains:", hgTopGrains.length, "bottomPositions:", hgBottomPositions.length);
   }
 }
 
@@ -342,10 +355,10 @@ function initHourglass() {
 }
 
 function updateHourglass() {
-  hgFadeIn = min(hgFadeIn + 0.015, 1);
+  hgFadeIn = min(hgFadeIn + 0.03, 1); // 約33フレームでフェードイン完了
 
-  let elapsed = frameCount - hgStartFrame - 60; // 1秒待ってから落ち始める
-  if (elapsed > 0 && hgFadeIn >= 1) {
+  let elapsed = frameCount - hgStartFrame - 30; // 0.5秒待ってから落ち始める
+  if (elapsed > 0) { // hgFadeIn の完了を待たずに落下開始
     let targetReleased = floor(elapsed / 5);
     let currentReleased = hgBottomGrains.length + hgFallGrains.length;
     while (currentReleased < targetReleased && hgTopGrains.length > 0) {
