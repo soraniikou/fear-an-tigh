@@ -60,6 +60,20 @@ let lidOpenAmount = 0; // 0=閉, 1=開
 let sandGrains = [];
 let SAND_COUNT = 260;
 
+// 砂時計
+const HG_HW = 65;
+const HG_HH = 118;
+const HG_NECK_W = 5;
+const HG_GRAIN_COUNT = 85;
+let hgCX, hgCY;
+let hgTopGrains = [];
+let hgFallGrains = [];
+let hgBottomGrains = [];
+let hgBottomPositions = [];
+let hgFadeIn = 0;
+let hgStartFrame = 0;
+let hgAllDoneFrame = 0;
+
 // 2本指ジェスチャー
 let gestureStartYs = {};
 let gestureProgress = 0;
@@ -116,9 +130,9 @@ function draw() {
   } else if (phase === "opening") {
     drawJarScene();
     updateOpening();
-  } else if (phase === "releasing") {
-    drawJarScene();
-    updateReleasing();
+  } else if (phase === "hourglass") {
+    updateHourglass();
+    drawHourglass();
   } else if (phase === "end") {
     drawEndScene();
   }
@@ -186,7 +200,7 @@ function drawJarScene() {
   stroke(180, 200, 220, 90);
   strokeWeight(2);
   rectMode(CENTER);
-  let jarTiltAngle = phase === "releasing" ? radians(min((frameCount - releaseStartFrame) * 0.6, 55)) : 0;
+  let jarTiltAngle = 0;
 
   push();
   translate(jarCenterX, jarCenterY);
@@ -226,8 +240,6 @@ function drawJarScene() {
     circle(jarCenterX, jarCenterY - jarH * 0.5 - 14, 60 + gestureProgress * 20);
   }
 }
-
-let releaseStartFrame = 0;
 
 function drawSand(tiltAngle) {
   for (let g of sandGrains) {
@@ -278,47 +290,156 @@ function touchEnded() {
 function updateOpening() {
   lidOpenAmount = min(lidOpenAmount + 0.03, 1);
   if (lidOpenAmount >= 1) {
-    phase = "releasing";
-    releaseStartFrame = frameCount;
-    for (let g of sandGrains) {
-      g.settled = false;
-      g.vx = random(-0.3, 0.3);
-      g.vy = 0;
+    phase = "hourglass";
+    initHourglass();
+  }
+}
+
+/* ---------------- シーン3: 砂時計 ---------------- */
+
+function initHourglass() {
+  hgCX = width / 2;
+  hgCY = height / 2;
+  hgTopGrains = [];
+  hgFallGrains = [];
+  hgBottomGrains = [];
+  hgBottomPositions = [];
+  hgFadeIn = 0;
+  hgStartFrame = frameCount;
+  hgAllDoneFrame = 0;
+
+  // 上チャンバーに砂を配置（上が広く、首が狭い三角形）
+  for (let i = 0; i < HG_GRAIN_COUNT; i++) {
+    let yFrac = random(0.08, 0.93);
+    let y = (hgCY - HG_HH) + yFrac * HG_HH;
+    let xRange = lerp(HG_HW, HG_NECK_W, yFrac) * 0.86;
+    let x = hgCX + random(-xRange, xRange);
+    hgTopGrains.push({
+      x, y, yFrac,
+      size: random(2, 3.5),
+      r: floor(random(175, 215)),
+      g_: floor(random(150, 175)),
+      b_: floor(random(120, 148))
+    });
+  }
+  // 首に近いほど先に落ちるよう y 降順でソート
+  hgTopGrains.sort((a, b) => b.y - a.y);
+
+  // 下チャンバーの着地点を下から積み上げる形で事前計算
+  let rowH = 4.5;
+  for (let row = 0; hgBottomPositions.length < HG_GRAIN_COUNT; row++) {
+    let yFromBottom = row * rowH + 5;
+    if (yFromBottom >= HG_HH - 8) break;
+    let y = hgCY + HG_HH - yFromBottom;
+    let fracFromNeck = (y - hgCY) / HG_HH;
+    let xRange = lerp(HG_NECK_W, HG_HW, fracFromNeck) * 0.83;
+    let cols = max(1, floor(xRange * 2 / 5));
+    for (let c = 0; c < cols && hgBottomPositions.length < HG_GRAIN_COUNT; c++) {
+      let x = hgCX - xRange + (c + 0.5) * (xRange * 2 / cols) + random(-1, 1);
+      hgBottomPositions.push({ x, y: y + random(-0.5, 0.5) });
     }
   }
 }
 
-function updateReleasing() {
-  let tiltAngle = radians(min((frameCount - releaseStartFrame) * 0.6, 55));
-  let dropOriginX = jarCenterX + cos(tiltAngle) * jarW * 0.1;
-  let dropOriginY = jarCenterY - jarH * 0.5;
+function updateHourglass() {
+  hgFadeIn = min(hgFadeIn + 0.015, 1);
 
-  let allGone = true;
-  for (let g of sandGrains) {
-    if (g.y < height + 40) {
-      allGone = false;
-      g.vy += 0.12;
-      g.x += g.vx + sin(tiltAngle) * 1.4;
-      g.y += g.vy;
-
-      // グレー → ゴールドへの色変化
-      let t = constrain(map(g.y, jarCenterY, height * 0.92, 0, 1), 0, 1);
-      let c1 = color(120, 112, 100);
-      let c2 = color(255, 214, 120);
-      g.col = lerpColor(c1, c2, t);
-
-      // 下方で徐々に消える
-      if (g.y > height * 0.75) {
-        let fadeT = map(g.y, height * 0.75, height + 40, 255, 0);
-        g.col.setAlpha(max(fadeT, 0));
-      }
+  let elapsed = frameCount - hgStartFrame - 60; // 1秒待ってから落ち始める
+  if (elapsed > 0 && hgFadeIn >= 1) {
+    let targetReleased = floor(elapsed / 5);
+    let currentReleased = hgBottomGrains.length + hgFallGrains.length;
+    while (currentReleased < targetReleased && hgTopGrains.length > 0) {
+      let g = hgTopGrains.pop();
+      let dest = hgBottomPositions[currentReleased] || { x: hgCX + random(-4, 4), y: hgCY + HG_HH - 5 };
+      hgFallGrains.push({
+        x: hgCX + random(-HG_NECK_W * 0.6, HG_NECK_W * 0.6),
+        y: hgCY + HG_NECK_W,
+        vy: random(1.5, 2.5),
+        size: g.size,
+        r: g.r, g_: g.g_, b_: g.b_,
+        destX: dest.x, destY: dest.y
+      });
+      currentReleased++;
     }
   }
 
-  if (allGone) {
-    phase = "end";
-    fadeWhisper();
+  // 落下中の砂粒を更新
+  for (let i = hgFallGrains.length - 1; i >= 0; i--) {
+    let g = hgFallGrains[i];
+    g.vy = min(g.vy + 0.2, 6);
+    g.y += g.vy;
+    if (g.y >= g.destY) {
+      hgBottomGrains.push({ x: g.destX, y: g.destY, size: g.size, r: g.r, g_: g.g_, b_: g.b_ });
+      hgFallGrains.splice(i, 1);
+    }
   }
+
+  // 全粒子が着地したら終了へ
+  if (elapsed > 0 && hgTopGrains.length === 0 && hgFallGrains.length === 0) {
+    if (hgAllDoneFrame === 0) hgAllDoneFrame = frameCount;
+    if (frameCount - hgAllDoneFrame > 150) {
+      phase = "end";
+      fadeWhisper();
+    }
+  }
+}
+
+function drawHourglass() {
+  let a = hgFadeIn;
+  push();
+
+  // 砂時計のフレーム（ガラス輪郭）
+  stroke(180, 200, 220, 75 * a);
+  strokeWeight(1.5);
+  noFill();
+
+  // 上半分
+  beginShape();
+  vertex(hgCX - HG_HW, hgCY - HG_HH);
+  vertex(hgCX + HG_HW, hgCY - HG_HH);
+  vertex(hgCX + HG_NECK_W, hgCY);
+  vertex(hgCX - HG_NECK_W, hgCY);
+  endShape(CLOSE);
+
+  // 下半分
+  beginShape();
+  vertex(hgCX - HG_NECK_W, hgCY);
+  vertex(hgCX + HG_NECK_W, hgCY);
+  vertex(hgCX + HG_HW, hgCY + HG_HH);
+  vertex(hgCX - HG_HW, hgCY + HG_HH);
+  endShape(CLOSE);
+
+  // 上下のキャップ（枠）
+  strokeWeight(2);
+  stroke(180, 200, 220, 90 * a);
+  line(hgCX - HG_HW - 8, hgCY - HG_HH, hgCX + HG_HW + 8, hgCY - HG_HH);
+  line(hgCX - HG_HW - 8, hgCY + HG_HH, hgCX + HG_HW + 8, hgCY + HG_HH);
+
+  noStroke();
+
+  // 上チャンバーの砂
+  for (let g of hgTopGrains) {
+    fill(g.r, g.g_, g.b_, 215 * a);
+    circle(g.x, g.y, g.size);
+  }
+
+  // 落下中の砂
+  for (let g of hgFallGrains) {
+    fill(g.r, g.g_, g.b_, 200 * a);
+    circle(g.x, g.y, g.size);
+  }
+
+  // 下チャンバーの砂（グレーからゴールドへ）
+  for (let g of hgBottomGrains) {
+    let fracFromNeck = constrain((g.y - hgCY) / HG_HH, 0, 1);
+    let r = lerp(g.r, 255, fracFromNeck * 0.55);
+    let gr = lerp(g.g_, 214, fracFromNeck * 0.5);
+    let b = lerp(g.b_, 100, fracFromNeck * 0.4);
+    fill(r, gr, b, 215 * a);
+    circle(g.x, g.y, g.size);
+  }
+
+  pop();
 }
 
 /* ---------------- 終景 ---------------- */
