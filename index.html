@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>フィアナンティ</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #060912;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  canvas {
+    display: block;
+  }
+  #whisper {
+    position: fixed;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: rgba(210, 220, 235, 0.35);
+    font-family: -apple-system, 'Hiragino Mincho ProN', serif;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    pointer-events: none;
+    transition: opacity 1.5s ease;
+  }
+</style>
+</head>
+<body>
+
+<div id="whisper">この体験は誰にも見られていません。何も保存されず、ただこの瞬間だけに、ここにあります。</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+<script>
+
+/* ========================================================
+   フィアナンティ (Fianainti)
+   出会い → 固く閉ざされた砂の瓶 → 解放
+   ======================================================== */
+
+let stars = [];
+let phase = "sky"; // sky -> converge -> flash -> jar -> opening -> releasing -> end
+let phaseTimer = 0;
+
+// 出会いの光の粒子（ツインレイ）
+let lightA, lightB;
+let convergeProgress = 0;
+let flashAlpha = 0;
+
+// 瓶
+let jarCenterX, jarCenterY;
+let jarW = 140, jarH = 200;
+let lidOpenAmount = 0; // 0=閉, 1=開
+let sandGrains = [];
+let SAND_COUNT = 260;
+
+// 2本指ジェスチャー
+let gestureStartYs = {};
+let gestureProgress = 0;
+let gestureActive = false;
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  noStroke();
+
+  for (let i = 0; i < 180; i++) {
+    stars.push({
+      x: random(width),
+      y: random(height),
+      r: random(0.5, 1.8),
+      tw: random(TWO_PI)
+    });
+  }
+
+  jarCenterX = width / 2;
+  jarCenterY = height / 2 + 40;
+
+  lightA = { x: -40, y: -40, tx: jarCenterX, ty: jarCenterY };
+  lightB = { x: width + 40, y: height + 40, tx: jarCenterX, ty: jarCenterY };
+
+  for (let i = 0; i < SAND_COUNT; i++) {
+    sandGrains.push(makeSandGrain());
+  }
+}
+
+function makeSandGrain() {
+  let angle = random(TWO_PI);
+  let radius = random(0, jarW * 0.32);
+  return {
+    x: jarCenterX + cos(angle) * radius,
+    y: jarCenterY + 30 + random(-60, 60),
+    vx: 0,
+    vy: 0,
+    settled: true,
+    col: null,
+    size: random(1.6, 3.2)
+  };
+}
+
+function draw() {
+  drawSky();
+
+  if (phase === "sky") {
+    updateConverge();
+  } else if (phase === "flash") {
+    updateFlash();
+  } else if (phase === "jar") {
+    drawJarScene();
+    updateGesture();
+  } else if (phase === "opening") {
+    drawJarScene();
+    updateOpening();
+  } else if (phase === "releasing") {
+    drawJarScene();
+    updateReleasing();
+  } else if (phase === "end") {
+    drawEndScene();
+  }
+}
+
+function drawSky() {
+  background(6, 9, 18);
+  for (let s of stars) {
+    s.tw += 0.02;
+    let a = map(sin(s.tw), -1, 1, 60, 180);
+    fill(210, 220, 240, a);
+    circle(s.x, s.y, s.r);
+  }
+}
+
+/* ---------------- シーン1: 出会い ---------------- */
+
+function updateConverge() {
+  convergeProgress += 0.006;
+  convergeProgress = min(convergeProgress, 1);
+
+  let ax = lerp(-40, jarCenterX, easeInOut(convergeProgress));
+  let ay = lerp(-40, jarCenterY, easeInOut(convergeProgress));
+  let bx = lerp(width + 40, jarCenterX, easeInOut(convergeProgress));
+  let by = lerp(height + 40, jarCenterY, easeInOut(convergeProgress));
+
+  drawLightTrail(ax, ay, [255, 245, 220]);
+  drawLightTrail(bx, by, [220, 235, 255]);
+
+  if (convergeProgress >= 1) {
+    phase = "flash";
+    phaseTimer = 0;
+  }
+}
+
+function drawLightTrail(x, y, rgb) {
+  for (let i = 0; i < 12; i++) {
+    let a = map(i, 0, 12, 90, 0);
+    fill(rgb[0], rgb[1], rgb[2], a);
+    circle(x, y, 10 - i * 0.6);
+  }
+  fill(255, 255, 255, 220);
+  circle(x, y, 8);
+}
+
+function updateFlash() {
+  phaseTimer++;
+  flashAlpha = phaseTimer < 20 ? map(phaseTimer, 0, 20, 0, 200) : map(phaseTimer, 20, 40, 200, 0);
+  fill(255, 255, 255, max(flashAlpha, 0));
+  rect(0, 0, width, height);
+
+  if (phaseTimer > 40) {
+    phase = "jar";
+  }
+}
+
+/* ---------------- シーン2: 瓶 ---------------- */
+
+function drawJarScene() {
+  push();
+  translate(0, lidOpenAmount * -20);
+
+  // 瓶本体（ガラス）
+  noFill();
+  stroke(180, 200, 220, 90);
+  strokeWeight(2);
+  rectMode(CENTER);
+  let jarTiltAngle = phase === "releasing" ? radians(min((frameCount - releaseStartFrame) * 0.6, 55)) : 0;
+
+  push();
+  translate(jarCenterX, jarCenterY);
+  rotate(jarTiltAngle);
+  translate(-jarCenterX, -jarCenterY);
+
+  // ガラス輪郭（丸みのある瓶）
+  beginShape();
+  vertex(jarCenterX - jarW * 0.28, jarCenterY - jarH * 0.5);
+  vertex(jarCenterX + jarW * 0.28, jarCenterY - jarH * 0.5);
+  vertex(jarCenterX + jarW * 0.5, jarCenterY - jarH * 0.15);
+  vertex(jarCenterX + jarW * 0.5, jarCenterY + jarH * 0.42);
+  vertex(jarCenterX + jarW * 0.32, jarCenterY + jarH * 0.5);
+  vertex(jarCenterX - jarW * 0.32, jarCenterY + jarH * 0.5);
+  vertex(jarCenterX - jarW * 0.5, jarCenterY + jarH * 0.42);
+  vertex(jarCenterX - jarW * 0.5, jarCenterY - jarH * 0.15);
+  endShape(CLOSE);
+
+  // 蓋
+  noStroke();
+  let lidY = jarCenterY - jarH * 0.5 - 14 - lidOpenAmount * 90;
+  let lidAlpha = 220 * (1 - lidOpenAmount);
+  fill(140, 150, 165, lidAlpha);
+  rectMode(CENTER);
+  rect(jarCenterX, lidY, jarW * 0.62, 20, 6);
+
+  pop();
+  pop();
+
+  // 砂
+  drawSand(jarTiltAngle);
+
+  if (phase === "jar" && gestureActive) {
+    noFill();
+    stroke(255, 255, 255, 40 + gestureProgress * 100);
+    strokeWeight(2);
+    circle(jarCenterX, jarCenterY - jarH * 0.5 - 14, 60 + gestureProgress * 20);
+  }
+}
+
+let releaseStartFrame = 0;
+
+function drawSand(tiltAngle) {
+  for (let g of sandGrains) {
+    fill(g.col ? g.col : color(120, 112, 100, 235));
+    circle(g.x, g.y, g.size);
+  }
+}
+
+/* ---------------- 2本指ジェスチャー ---------------- */
+
+function updateGesture() {
+  if (touches.length === 2) {
+    gestureActive = true;
+    let total = 0;
+    for (let t of touches) {
+      let id = t.id;
+      if (gestureStartYs[id] === undefined) gestureStartYs[id] = t.y;
+      total += (gestureStartYs[id] - t.y);
+    }
+    let avg = total / touches.length;
+    gestureProgress = constrain(avg / 90, 0, 1);
+
+    if (gestureProgress >= 1) {
+      phase = "opening";
+      gestureActive = false;
+      gestureStartYs = {};
+    }
+  } else {
+    gestureActive = false;
+    gestureProgress *= 0.9;
+    if (touches.length === 0) gestureStartYs = {};
+  }
+}
+
+function touchStarted() {
+  return false; // デフォルトのスクロール等を抑制
+}
+
+function touchEnded() {
+  if (touches.length < 2) {
+    gestureStartYs = {};
+  }
+  return false;
+}
+
+/* ---------------- シーン3: 解放 ---------------- */
+
+function updateOpening() {
+  lidOpenAmount = min(lidOpenAmount + 0.03, 1);
+  if (lidOpenAmount >= 1) {
+    phase = "releasing";
+    releaseStartFrame = frameCount;
+    for (let g of sandGrains) {
+      g.settled = false;
+      g.vx = random(-0.3, 0.3);
+      g.vy = 0;
+    }
+  }
+}
+
+function updateReleasing() {
+  let tiltAngle = radians(min((frameCount - releaseStartFrame) * 0.6, 55));
+  let dropOriginX = jarCenterX + cos(tiltAngle) * jarW * 0.1;
+  let dropOriginY = jarCenterY - jarH * 0.5;
+
+  let allGone = true;
+  for (let g of sandGrains) {
+    if (g.y < height + 40) {
+      allGone = false;
+      g.vy += 0.12;
+      g.x += g.vx + sin(tiltAngle) * 1.4;
+      g.y += g.vy;
+
+      // グレー → ゴールドへの色変化
+      let t = constrain(map(g.y, jarCenterY, height * 0.92, 0, 1), 0, 1);
+      let c1 = color(120, 112, 100);
+      let c2 = color(255, 214, 120);
+      g.col = lerpColor(c1, c2, t);
+
+      // 下方で徐々に消える
+      if (g.y > height * 0.75) {
+        let fadeT = map(g.y, height * 0.75, height + 40, 255, 0);
+        g.col.setAlpha(max(fadeT, 0));
+      }
+    }
+  }
+
+  if (allGone) {
+    phase = "end";
+    fadeWhisper();
+  }
+}
+
+/* ---------------- 終景 ---------------- */
+
+function drawEndScene() {
+  // 空だけが残る。テキストなし、評価なし。
+}
+
+function fadeWhisper() {
+  let el = document.getElementById("whisper");
+  if (el) {
+    el.style.opacity = "0";
+  }
+}
+
+/* ---------------- ユーティリティ ---------------- */
+
+function easeInOut(t) {
+  return t < 0.5 ? 2 * t * t : 1 - pow(-2 * t + 2, 2) / 2;
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  jarCenterX = width / 2;
+  jarCenterY = height / 2 + 40;
+}
+
+</script>
+</body>
+</html>
