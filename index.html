@@ -34,7 +34,7 @@
 </head>
 <body>
 
-<div id="whisper">この体験は誰にも見られていません。何も保存されず、ただこの瞬間だけに、ここにあります。</div>
+<div id="whisper">No one is watching this. Nothing is saved. It exists only in this moment.</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
 <script>
@@ -137,7 +137,7 @@ function drawSky() {
 /* ---------------- シーン1: 出会い ---------------- */
 
 function updateConverge() {
-  convergeProgress += 0.006;
+  convergeProgress += 0.002;
   convergeProgress = min(convergeProgress, 1);
 
   let ax = lerp(-40, jarCenterX, easeInOut(convergeProgress));
