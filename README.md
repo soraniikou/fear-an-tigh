@@ -11,7 +11,7 @@
 どうか、一瞬でも安らかな瞬間を
 一分で見るだけのアプリです。
 アプリ体験→
-　https://strawberry-moon-miracle.vercel.app
+　https://fear-an-tigh.vercel.app
 
 Gazing at the lid over my own heart.
 
