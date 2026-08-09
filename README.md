@@ -6,14 +6,12 @@
 今回は、この世の女性に　1秒でも多く休み、睡眠を取っていただきたくて　このアプリを作りました。
 ただ眺めて、どうか休んでください。
 あなたは十分に良くやっています。　休む価値がある人です。
+日本女性の睡眠障害は、単なる個人の意識問題ではなく、「生活密度の過密さ（仕事＋家事育児負担）」と「女性ホルモン（エストロゲン）の変化」が年代ごとに交差して引き起こされている点が大きな特徴です。
 
-
-
-
-
-
-
-
+どうか、一瞬でも安らかな瞬間を
+一分で見るだけのアプリです。
+アプリ体験→
+　https://strawberry-moon-miracle.vercel.app
 
 Gazing at the lid over my own heart.
 
@@ -21,6 +19,4 @@ My jar of sand has a lid. If I truly wanted to open it with my own strength, I'm
 
 But then, I met someone who forcefully pried open that lid—the very one I thought could never be nudged. When this jar of sand opens and the grains pour out, perhaps I will see light filling the empty space left behind.
 
-I am so deeply grateful for your wonderful presence. Just as I feel this gratitude, I believe I will continue to live my life, learning to love myself in the same way, even if I stumble or fail along the way.
 
-Driven by this realization, I am now creating an app.
