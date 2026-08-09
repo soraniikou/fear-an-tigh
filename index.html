@@ -143,7 +143,7 @@ function drawSky() {
   for (let s of stars) {
     s.tw += 0.02;
     let a = map(sin(s.tw), -1, 1, 60, 180);
-    fill(210, 220, 240, a);
+    fill(185, 195, 215, a);
     circle(s.x, s.y, s.r);
   }
 }
@@ -151,7 +151,7 @@ function drawSky() {
 /* ---------------- シーン1: 出会い ---------------- */
 
 function updateConverge() {
-  convergeProgress += 0.002;
+  convergeProgress += 0.001;
   convergeProgress = min(convergeProgress, 1);
 
   let ax = lerp(-40, jarCenterX, easeInOut(convergeProgress));
@@ -159,8 +159,8 @@ function updateConverge() {
   let bx = lerp(width + 40, jarCenterX, easeInOut(convergeProgress));
   let by = lerp(height + 40, jarCenterY, easeInOut(convergeProgress));
 
-  drawLightTrail(ax, ay, [255, 245, 220]);
-  drawLightTrail(bx, by, [220, 235, 255]);
+  drawLightTrail(ax, ay, [230, 218, 195]);
+  drawLightTrail(bx, by, [195, 210, 230]);
 
   if (convergeProgress >= 1) {
     phase = "flash";
@@ -174,7 +174,7 @@ function drawLightTrail(x, y, rgb) {
     fill(rgb[0], rgb[1], rgb[2], a);
     circle(x, y, 10 - i * 0.6);
   }
-  fill(255, 255, 255, 220);
+  fill(235, 238, 245, 200);
   circle(x, y, 8);
 }
 
