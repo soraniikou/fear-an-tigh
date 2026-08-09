@@ -13,6 +13,13 @@
 アプリ体験→
 　https://fear-an-tigh.vercel.app
 
+ ![suna](./%73%75%6e%61%2e%70%6e%67)
+ 
+![suna1](./%73%75%6e%61%31%2e%70%6e%67)
+
+![suna2](./%73%75%6e%61%32%2e%70%6e%67)
+
+
 Gazing at the lid over my own heart.
 
 My jar of sand has a lid. If I truly wanted to open it with my own strength, I'm sure I could do so easily—yet I had convinced myself that it was impossible. I had given up. I kept telling myself that this was enough for my life in this world.
