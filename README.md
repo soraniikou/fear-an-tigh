@@ -17,7 +17,8 @@
  
 ![suna1](./%73%75%6e%61%31%2e%70%6e%67)
 
-![suna2](./%73%75%6e%61%32%2e%70%6e%67)
+![sna](./%73%6e%61%2e%70%6e%67)
+
 
 
 Gazing at the lid over my own heart.
